@@ -1,0 +1,45 @@
+name: 演示站点
+
+# 把 app/ 目录直接发布成 GitHub Pages，得到可在手机上真用的在线演示。
+# 应用内所有资源都是相对路径、Service Worker 用相对作用域注册，
+# 因此放在 /<仓库名>/ 子路径下也能正常工作。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 确认 Pages 已启用（未启用则自动开启）
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: 打包 app/ 目录
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: app
+
+      - name: 发布
+        id: deploy
+        uses: actions/deploy-pages@v4

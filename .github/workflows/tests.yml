@@ -1,0 +1,42 @@
+name: 测试
+
+# 这里跑的是 7 套不依赖浏览器的断言（737 项）。
+# browser-check / a11y-tree / ui-shots 三套需要真实 Edge 与静态服务器，
+# 目前只在本地跑，命令见 README。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  assertions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 排程引擎
+        run: node app/tests/scheduler.test.cjs
+
+      - name: 平台适配层
+        run: node app/tests/platform.test.cjs
+
+      - name: 数据链路冒烟
+        run: node app/tests/smoke.test.cjs
+
+      - name: Service Worker
+        run: node app/tests/pwa.test.cjs
+
+      - name: 无障碍静态检查
+        run: node app/tests/a11y.test.cjs
+
+      - name: 原生工程脚本
+        run: node native/tests/native.test.mjs
+
+      - name: 家属协同中继端到端
+        run: node server/tests/relay.test.mjs
