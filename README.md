@@ -1,8 +1,11 @@
 # 药准时（MediOnTime）
 
 [![测试](https://github.com/3255468914/mediontime/actions/workflows/tests.yml/badge.svg)](https://github.com/3255468914/mediontime/actions/workflows/tests.yml)
+[![演示站点](https://github.com/3255468914/mediontime/actions/workflows/pages.yml/badge.svg)](https://3255468914.github.io/mediontime/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 ![Node](https://img.shields.io/badge/node-%E2%89%A518-brightgreen)
+
+**在线体验 👉 [3255468914.github.io/mediontime](https://3255468914.github.io/mediontime/)**（直接用浏览器打开，无需安装）
 
 面向长期服药人群及其家属的用药提醒与依从性管理工具。核心价值是让该吃的药一次都不落下：
 到点强提醒、未确认逐级升级、漏服有人知道。
@@ -21,7 +24,11 @@
 - **长者模式与无障碍**：字号放大、高对比度（多项达 WCAG AAA）、读屏可用的语义与焦点管理
 - **隐私默认**：数据全部存本地；通知与家属事件不显示药名与剂量；不配置中继则一个请求都不发
 
-## 快速开始（网页版，零依赖）
+## 快速开始
+
+最快的方式是直接打开在线演示：**https://3255468914.github.io/mediontime/**
+
+想在本机跑（可脱离网络、可用完整 Service Worker 能力）：
 
 ```bash
 cd app
@@ -51,9 +58,12 @@ node relay.mjs --host 0.0.0.0 --port 8789
 默认不联网；唯一的例外是用户自己开启的家属协同，且发出去的事件永远不含药名与剂量。
 公网部署前请按 [docs/08](docs/08-家属协同服务端.md) §六收紧（限流、CORS、令牌吊销、HTTPS）。
 
-## 安卓安装包（自构建）
+## 安卓安装包
 
-`native/` 是 Capacitor 容器，把 `app/` 原封不动装进原生壳，触发时刻交给系统：
+不想自己编译，可直接下载现成的：[**Releases → v1.0.0**](https://github.com/3255468914/mediontime/releases/latest)
+（debug 签名，仅供自用与测试）。
+
+也可以自己构建——`native/` 是 Capacitor 容器，把 `app/` 原封不动装进原生壳，触发时刻交给系统：
 
 ```bash
 cd native
