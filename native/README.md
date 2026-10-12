@@ -72,10 +72,15 @@ npm run open:android
 npm run run:android
 ```
 
-> **生成工程 ≠ 能编译。** 本机已完成第 1~3 步并核实过结果
-> （6 条权限 + 明文 HTTP 声明齐备、`caregiver.html` 等资源逐字节一致），
-> 但**没有编译过**：Gradle 需要 **JDK 17+**（本机是 JDK 1.8）与 Android SDK
-> （`compileSdk 36 / minSdk 24`）。
+> **JDK 要求 21。** Gradle 需要 JDK 17+，而 `capacitor-local-notifications`
+> 的 toolchain 明确要求 `languageVersion=21`，因此整条链要跑在 JDK 21 上
+> （JDK 17 会在这一步报 `Cannot find a Java installation matching {languageVersion=21}`）。
+> 其余要求：Android SDK（`compileSdk 36 / minSdk 24`）。
+>
+> 本机已完成 1~3 步、编译出 `app-debug.apk` 并在真机上验证熄屏/后台送达。
+> 若 `npm run sync` 之后 Gradle 报 `Could not read script ... cordova.variables.gradle`，
+> 见 [docs/10 §5](../docs/10-优化与加固评估.md)——那是 sync 删了临时垫片又没重建，
+> 可从 `node_modules/@capacitor/cli/assets/` 下的 tar 模板恢复。
 
 自检：
 

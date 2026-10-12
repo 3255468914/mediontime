@@ -56,7 +56,7 @@ cd native
 npm install
 npm run sync                              # 同步 web 资产到 android 工程
 cd android
-./gradlew assembleDebug                   # 需要 JDK 17+ 与 Android SDK
+./gradlew assembleDebug                   # 需要 JDK 21（工具链硬要求）与 Android SDK
 # 产物: app/build/outputs/apk/debug/app-debug.apk
 ```
 
