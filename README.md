@@ -1,5 +1,9 @@
 # 药准时（MediOnTime）
 
+[![测试](https://github.com/3255468914/mediontime/actions/workflows/tests.yml/badge.svg)](https://github.com/3255468914/mediontime/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+![Node](https://img.shields.io/badge/node-%E2%89%A518-brightgreen)
+
 面向长期服药人群及其家属的用药提醒与依从性管理工具。核心价值是让该吃的药一次都不落下：
 到点强提醒、未确认逐级升级、漏服有人知道。
 
