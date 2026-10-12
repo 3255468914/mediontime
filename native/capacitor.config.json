@@ -1,0 +1,21 @@
+{
+  "appId": "cn.mediontime.app",
+  "appName": "药准时",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "contentInset": "always",
+    "backgroundColor": "#ffffff"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_pill",
+      "iconColor": "#2f6fed",
+      "sound": "beep.wav"
+    }
+  }
+}

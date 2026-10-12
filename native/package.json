@@ -1,0 +1,29 @@
+{
+  "name": "mediontime-native",
+  "version": "1.0.0",
+  "private": true,
+  "description": "药准时 · 原生容器（Capacitor）——把提醒交给操作系统调度，使应用被关闭、设备重启后仍能准时响铃",
+  "type": "module",
+  "scripts": {
+    "www": "node scripts/sync-www.mjs",
+    "www:check": "node scripts/sync-www.mjs --check",
+    "android:add": "npx cap add android",
+    "ios:add": "npx cap add ios",
+    "patch:android": "node scripts/patch-native.mjs --manifest android/app/src/main/AndroidManifest.xml",
+    "patch:check": "node scripts/patch-native.mjs --manifest android/app/src/main/AndroidManifest.xml --check",
+    "sync": "node scripts/sync-www.mjs && npx cap sync",
+    "open:android": "npx cap open android",
+    "open:ios": "npx cap open ios",
+    "run:android": "npx cap run android",
+    "test": "node tests/native.test.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
+    "@capacitor/local-notifications": "^8.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3"
+  }
+}

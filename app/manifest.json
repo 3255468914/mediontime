@@ -1,0 +1,24 @@
+{
+  "name": "药准时 · 用药提醒",
+  "short_name": "药准时",
+  "description": "面向长期服药人群及其家属的用药提醒与依从性管理工具",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef1f5",
+  "theme_color": "#2f6fed",
+  "categories": ["health", "medical", "lifestyle"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='42' fill='%232f6fed'/%3E%3Cpath d='M84 44 44 84a28 28 0 0 0 40 40l40-40a28 28 0 0 0-40-40Z' fill='none' stroke='%23fff' stroke-width='13' stroke-linejoin='round'/%3E%3Cpath d='M56 56l40 40' stroke='%23fff' stroke-width='13' stroke-linecap='round'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    { "name": "今日服药", "url": "./index.html", "description": "查看今日服药时间轴" }
+  ]
+}

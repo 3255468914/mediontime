@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2f6fed">
+<meta name="description" content="药准时 · 用药提醒与依从性管理工具">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%232f6fed'/%3E%3Cpath d='M10.5 5.5 5.5 10.5a3.5 3.5 0 0 0 5 5l5-5a3.5 3.5 0 0 0-5-5Z' fill='none' stroke='%23fff' stroke-width='1.7'/%3E%3C/svg%3E">
+<title>药准时 · 用药提醒</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="phone" id="phone">
+  <div class="statusbar">
+    <span id="sbTime">--:--</span>
+    <span class="right"><span id="sbTz">本地</span><span class="batt"></span></span>
+  </div>
+
+  <div class="appbar" id="appbar"></div>
+
+  <!-- tabindex="-1"：可编程聚焦。用于两件事：全屏强提醒关闭后把焦点还给主内容区，
+       以及让可滚动的主区域能被键盘聚焦（否则键盘用户滚不动它）。不参与 Tab 顺序。 -->
+  <div class="screen" id="screen" tabindex="-1"></div>
+
+  <!-- 导航用真 <button>：键盘 Tab/Enter 与读屏器天然可用，
+       aria-current 由 App.render() 维护 -->
+  <nav class="tabbar" id="tabbar" aria-label="主导航">
+    <button type="button" class="tab active" data-tab="today" aria-current="page" onclick="App.go('today')">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>今日</span>
+    </button>
+    <button type="button" class="tab" data-tab="meds" onclick="App.go('meds')">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10.5 3.5 3.5 10.5a5 5 0 0 0 7 7l7-7a5 5 0 0 0-7-7Z"/><path d="M7 7l7 7"/></svg><span>用药</span>
+    </button>
+    <button type="button" class="tab" data-tab="log" onclick="App.go('log')">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span>记录</span>
+    </button>
+    <button type="button" class="tab" data-tab="me" onclick="App.go('me')">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg><span>我的</span>
+    </button>
+  </nav>
+
+  <!-- 全屏强提醒（L3）。role=alertdialog 让读屏器立刻播报，而不是静默弹出一个 div。
+       tabindex="-1" 是为了让 App.showFullscreen() 能把焦点移进来——
+       声明了 aria-modal="true" 就必须真的接管焦点，否则"模态"只是一句空话。 -->
+  <div class="fullscreen-alert" id="fsAlert" role="alertdialog" aria-modal="true" tabindex="-1"
+       aria-labelledby="fsName" aria-describedby="fsDose" aria-hidden="true">
+    <div class="fs-bell"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+    <div class="fs-time" id="fsTime">--:--</div>
+    <div class="fs-name" id="fsName">用药提醒</div>
+    <div class="fs-dose" id="fsDose"></div>
+    <div class="fs-btns">
+      <button class="btn" onclick="App.fsConfirm()">我已服药</button>
+      <button class="btn outline" onclick="App.fsSnooze()">稍后提醒 10 分钟</button>
+    </div>
+  </div>
+
+  <!-- 底部弹层。作为对话框：aria-labelledby / 焦点管理由 App.openSheet() 负责 -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" onclick="if(event.target===this)App.closeSheet()">
+    <div class="sheet" id="sheet"></div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+</div>
+
+<script src="js/scheduler.js"></script>
+<script src="js/platform.js"></script>
+<script src="js/store.js"></script>
+<script src="js/relay.js"></script>
+<script src="js/reminder.js"></script>
+<script src="js/app.js"></script>
+<script>
+  (function () {
+    function clock() {
+      var n = new Date();
+      var el = document.getElementById('sbTime');
+      if (el) el.textContent = String(n.getHours()).padStart(2, '0') + ':' + String(n.getMinutes()).padStart(2, '0');
+    }
+    clock(); setInterval(clock, 20000);
+
+    // PWA：仅在「顶层文档 + http(s)」下注册 Service Worker。
+    //  - file:// 会被浏览器直接拒绝
+    //  - 嵌入式预览 iframe 里注册 SW 有害无益：SW 装不上（预览服务器不吐目录索引）
+    //    会残留安装失败态，把宿主预览面板卡在「准备中」
+    var embedded = false;
+    try { embedded = window.self !== window.top; } catch (e) { embedded = true; }
+    if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0 && !embedded) {
+      navigator.serviceWorker.register('sw.js').catch(function (e) { console.warn('SW 注册失败', e); });
+    }
+  })();
+</script>
+</body>
+</html>

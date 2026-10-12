@@ -1,0 +1,12 @@
+{
+  "name": "mediontime-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "药准时 · 家属协同中继（零依赖）——把「该通知家属了」这个事实转交给已绑定的家属设备",
+  "type": "module",
+  "main": "relay.mjs",
+  "scripts": {
+    "start": "node relay.mjs",
+    "test": "node tests/relay.test.mjs"
+  }
+}

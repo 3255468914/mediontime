@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f6fff">
+<title>药准时 · 家属端</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  /* 家属端与患者端共用一套样式；这里只补几处家属端独有的排版 */
+  .cg-wrap { max-width: 480px; margin: 0 auto; padding: 18px 16px 48px; }
+  .cg-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+  .cg-status { display: flex; align-items: center; gap: 8px; font-size: .84em; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--sub); flex: none; }
+  .dot.on { background: var(--ok); }
+  .dot.off { background: var(--danger); }
+  .cg-alert { border-left: 4px solid var(--danger); background: var(--danger-soft); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+  .cg-alert .t { font-size: .8em; color: var(--sub); margin-bottom: 4px; }
+  .cg-alert .m { font-size: .95em; font-weight: 600; }
+  .cg-empty { color: var(--sub); font-size: .86em; }
+</style>
+</head>
+<body>
+<div class="cg-wrap" id="root"></div>
+
+<script>
+/*!
+ * 家属端 —— 绑定患者、接收漏服提醒
+ *
+ * 这一页刻意做成**独立的小页面**，而不是患者端应用里的一个 tab：
+ *   ① 家属不需要（也不应该）看到患者的药品清单与全部记录；
+ *   ② 家属只是"接收提醒"，不需要安装、不需要账号；
+ *   ③ 患者端因此可以保持"一个请求都不发"的默认。
+ *
+ * 两条接收通道：
+ *   · SSE      —— 页面开着时实时到达
+ *   · Web Push —— 页面关着也能到达（需服务器启用 Web Push 且浏览器支持）
+ * 页面会**如实显示**哪条通道是通的，不通就说不通。
+ */
+(function () {
+  'use strict';
+
+  var KEY = 'mediontime.caregiver.v1';
+  var state = { server: '', code: '', token: '', patientLabel: '', alerts: [], sse: 'idle', push: 'idle', pushNote: '' };
+  var es = null;
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) Object.assign(state, JSON.parse(raw));
+    } catch (e) { /* 忽略损坏的本地状态 */ }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { }
+  }
+
+  var el = document.getElementById('root');
+  var esc = function (s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  };
+  var hhmm = function (iso) {
+    try { return new Date(iso).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }); }
+    catch (e) { return ''; }
+  };
+
+  function render() {
+    if (!state.token) { el.innerHTML = bindView(); return; }
+    el.innerHTML = liveView();
+  }
+
+  function bindView() {
+    return '' +
+      '<h1 style="font-size:1.25em;margin:0 0 6px;">家属端</h1>' +
+      '<p style="color:var(--sub);font-size:.86em;margin:0 0 16px;line-height:1.7;">' +
+      '填入家人给你的<b>服务器地址</b>与<b>邀请码</b>即可绑定。绑定后，家人漏服时会通知你。' +
+      '你只能查看与提醒，不能修改他的处方。</p>' +
+
+      '<div class="cg-card">' +
+      '<div class="field"><label style="font-size:.8em;color:var(--sub);">服务器地址</label>' +
+      '<input id="fServer" value="' + esc(state.server) + '" placeholder="http://192.168.1.10:8789" autocomplete="off"></div>' +
+      '<div class="field" style="margin-top:10px;"><label style="font-size:.8em;color:var(--sub);">邀请码</label>' +
+      '<input id="fCode" value="' + esc(state.code) + '" placeholder="MEDI-XXXX" autocomplete="off" style="letter-spacing:2px;text-transform:uppercase;"></div>' +
+      '<button class="btn block" style="margin-top:14px" id="btnBind">绑定</button>' +
+      '<p class="tiny" id="bindMsg" style="margin-top:10px;line-height:1.7;"></p>' +
+      '</div>' +
+
+      '<div class="cg-card">' +
+      '<div style="font-size:.86em;color:var(--sub);line-height:1.85;">' +
+      '<b>这个页面只做一件事：接收提醒。</b><br>' +
+      '· 它不会读取、也无法读取家人的服药记录与药品清单<br>' +
+      '· 服务器只会在「该通知家属」那一刻收到一条不含药名的事件<br>' +
+      '· 建议把它「添加到主屏幕」并允许通知，这样关闭浏览器也能收到' +
+      '</div></div>';
+  }
+
+  function liveView() {
+    var alerts = state.alerts.length
+      ? state.alerts.map(function (a) {
+        return '<div class="cg-alert"><div class="t">' + esc(a.at ? new Date(a.at).toLocaleString('zh-CN') : '') + '</div>' +
+          '<div class="m">' + esc(a.text || '有一条用药提醒未确认') + '</div></div>';
+      }).join('')
+      : '<p class="cg-empty">还没有收到提醒。家人一切正常时，这里会一直安静。</p>';
+
+    var sseText = state.sse === 'open' ? '实时连接：已连接' :
+      (state.sse === 'connecting' ? '实时连接：连接中…' : '实时连接：未连接（页面关闭后收不到，建议开启通知）');
+    var pushText = {
+      idle: '后台推送：未申请',
+      ok: '后台推送：已开启（页面关闭也能收到）',
+      denied: '后台推送：你拒绝了通知权限，只能在页面打开时收到',
+      unsupported: '后台推送：当前浏览器不支持（只能在页面打开时收到）',
+      noserver: '后台推送：服务器未启用',
+      failed: '后台推送：注册失败——' + (state.pushNote || '未知原因')
+    }[state.push] || '后台推送：未知';
+
+    return '' +
+      '<div class="cg-card" style="display:flex;align-items:center;justify-content:space-between;">' +
+      '<div><div style="font-size:1.05em;font-weight:700;">' + esc(state.patientLabel || '家人') + '</div>' +
+      '<div class="cg-status"><span class="dot ' + (state.sse === 'open' ? 'on' : 'off') + '"></span>' +
+      '<span style="color:var(--sub)">' + esc(sseText) + '</span></div>' +
+      '<div class="cg-status" style="margin-top:4px;"><span class="dot ' + (state.push === 'ok' ? 'on' : '') + '"></span>' +
+      '<span style="color:var(--sub)">' + esc(pushText) + '</span></div></div>' +
+      '<button class="btn sm ghost" id="btnUnbind">解绑</button></div>' +
+
+      '<div class="cg-card"><div style="font-size:.88em;font-weight:600;margin-bottom:10px;">收到的提醒</div>' +
+      alerts + '</div>' +
+
+      '<div class="cg-card"><div style="font-size:.8em;color:var(--sub);line-height:1.85;">' +
+      '· 你看到的是<b>提醒事件</b>，不是服药记录——这是刻意的，家人只授权你收到"该提醒了"<br>' +
+      '· 若长时间显示"未连接"，请检查手机与服务器是否在同一网络<br>' +
+      '· 家人的药名不会出现在这里（隐私保护）' +
+      '</div></div>' +
+
+      '<button class="btn block ghost" id="btnEnablePush">开启后台通知（页面关闭也能收到）</button>';
+  }
+
+  /* ---------- 绑定 ---------- */
+
+  function bind() {
+    var server = (document.getElementById('fServer').value || '').trim().replace(/\/+$/, '');
+    var code = (document.getElementById('fCode').value || '').trim().toUpperCase();
+    var msg = document.getElementById('bindMsg');
+    if (!/^https?:\/\//.test(server)) { msg.textContent = '服务器地址要以 http:// 或 https:// 开头'; msg.style.color = 'var(--danger)'; return; }
+    if (code.length < 4) { msg.textContent = '请填写完整的邀请码'; msg.style.color = 'var(--danger)'; return; }
+
+    msg.textContent = '正在绑定…'; msg.style.color = 'var(--sub)';
+    fetch(server + '/api/claim', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code, caregiverLabel: '家属' })
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.j.error || ('服务端返回 ' + r.status));
+        state.server = server; state.code = code;
+        state.token = r.j.caregiverToken;
+        state.patientLabel = r.j.patientLabel || '家人';
+        state.alerts = []; state.sse = 'connecting'; state.push = 'idle';
+        save(); render(); connect();
+      })
+      .catch(function (e) {
+        msg.textContent = '绑定失败：' + (e.message || '网络错误');
+        msg.style.color = 'var(--danger)';
+      });
+  }
+
+  function unbind() {
+    if (state.token) {
+      fetch(state.server + '/api/unclaim', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caregiverToken: state.token })
+      }).catch(function () { /* 服务器不通也要允许本地解绑 */ });
+    }
+    if (es) { try { es.close(); } catch (e) { } es = null; }
+    state = { server: '', code: '', token: '', patientLabel: '', alerts: [], sse: 'idle', push: 'idle', pushNote: '' };
+    save(); render();
+  }
+
+  /* ---------- SSE ---------- */
+
+  function connect() {
+    if (es) { try { es.close(); } catch (e) { } }
+    if (!state.token || !window.EventSource) { state.sse = 'closed'; render(); return; }
+    state.sse = 'connecting';
+
+    es = new EventSource(state.server + '/api/events?token=' + encodeURIComponent(state.token));
+
+    es.addEventListener('ready', function (e) {
+      state.sse = 'open';
+      try {
+        var d = JSON.parse(e.data);
+        if (d.patientLabel) state.patientLabel = d.patientLabel;
+      } catch (err) { }
+      save(); render();
+    });
+    es.addEventListener('alert', function (e) {
+      try {
+        var d = JSON.parse(e.data);
+        state.alerts.unshift({ text: d.text || '有一条用药提醒未确认', at: d.receivedAt || new Date().toISOString() });
+        if (state.alerts.length > 50) state.alerts.length = 50;
+        save(); render();
+        // 页面开着时也弹一条系统通知，让家属不必盯着屏幕
+        if (window.Notification && Notification.permission === 'granted') {
+          try { new Notification('家人有一条用药提醒未确认', { body: d.text || '', tag: 'cg-' + (d.id || '') }); } catch (err) { }
+        }
+      } catch (err) { }
+    });
+    es.onerror = function () {
+      // EventSource 自己会重连；这里只如实更新状态，不掩盖
+      state.sse = 'closed'; save(); render();
+    };
+  }
+
+  /* ---------- Web Push ---------- */
+
+  function urlB64ToUint8Array(base64) {
+    var pad = '='.repeat((4 - base64.length % 4) % 4);
+    var raw = atob((base64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    var arr = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+  }
+
+  function enablePush() {
+    if (!state.token) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      state.push = 'unsupported'; save(); render(); return;
+    }
+    if (!window.Notification) { state.push = 'unsupported'; save(); render(); return; }
+
+    var ask = (Notification.permission === 'granted')
+      ? Promise.resolve('granted')
+      : Notification.requestPermission();
+
+    ask.then(function (perm) {
+      if (perm !== 'granted') { state.push = 'denied'; save(); render(); return; }
+      return fetch(state.server + '/api/vapid')
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (!j.publicKey) {
+            state.push = 'noserver';
+            state.pushNote = '服务器未启用 Web Push';
+            save(); render(); return;
+          }
+          return navigator.serviceWorker.register('sw.js').then(function (reg) {
+            return navigator.serviceWorker.ready.then(function () {
+              return reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlB64ToUint8Array(j.publicKey)
+              });
+            });
+          }).then(function (sub) {
+            var j2 = sub.toJSON();
+            return fetch(state.server + '/api/push-subscribe', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ caregiverToken: state.token, subscription: j2 })
+            }).then(function (r) { return r.json().then(function (x) { return { ok: r.ok, x: x }; }); });
+          }).then(function (r) {
+            if (!r.ok) throw new Error(r.x.error || '登记订阅失败');
+            state.push = 'ok'; save(); render();
+          });
+        });
+    }).catch(function (e) {
+      state.push = 'failed';
+      state.pushNote = (e && e.message) || '未知原因';
+      save(); render();
+    });
+  }
+
+  /* ---------- 事件绑定（用委托，避免重渲染后监听器丢失） ---------- */
+  document.addEventListener('click', function (e) {
+    var id = e.target && e.target.id;
+    if (id === 'btnBind') bind();
+    else if (id === 'btnUnbind') unbind();
+    else if (id === 'btnEnablePush') enablePush();
+  });
+
+  load();
+  render();
+  if (state.token) { state.sse = 'connecting'; connect(); }
+})();
+</script>
+</body>
+</html>

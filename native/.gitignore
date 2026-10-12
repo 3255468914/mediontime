@@ -1,0 +1,9 @@
+# native/www/ 由 scripts/sync-www.mjs 从 ../app 生成，不需要纳入版本管理
+www/
+
+# 依赖
+node_modules/
+
+# 注：android/ 与 ios/ 由 `npx cap add` 生成，但**应当**提交——
+# 它们承载应用图标、启动图、签名配置等原生侧改动。
+local.properties

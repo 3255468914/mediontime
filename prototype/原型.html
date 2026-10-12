@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>药准时 · 高保真交互原型</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #2f6fed;
+    --primary-dark: #1c4fb8;
+    --primary-soft: #eaf1fe;
+    --ok: #10a35a;      --ok-soft: #e6f6ed;
+    --warn: #d98200;    --warn-soft: #fdf3e2;
+    --danger: #dc3b3b;  --danger-soft: #fdecec;
+    --bg: #eef1f5;
+    --card: #ffffff;
+    --text: #14181f;
+    --sub: #6b7480;
+    --line: #e6eaef;
+    --radius: 14px;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+    background: #d9dee5;
+    display: flex; justify-content: center; align-items: flex-start;
+    min-height: 100vh; padding: 28px 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== 手机外框 ===== */
+  .phone {
+    position: relative;
+    width: 375px; height: 780px;
+    background: var(--bg);
+    border-radius: 38px;
+    box-shadow: 0 20px 50px rgba(20,30,50,.22), 0 0 0 10px #1b1f26, 0 0 0 12px #33383f;
+    overflow: hidden;
+    font-size: 15px;
+    display: flex; flex-direction: column;
+  }
+  .phone.elder { font-size: 20px; }
+  .phone.elder .hide-elder { display: none !important; }
+
+  /* 状态栏 */
+  .statusbar {
+    height: 34px; flex: none;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px; font-size: .72em; color: var(--text); font-weight: 500;
+    background: var(--card);
+  }
+  .statusbar .right { display: flex; align-items: center; gap: 5px; }
+  .batt { width: 20px; height: 10px; border: 1px solid var(--text); border-radius: 2px; position: relative; }
+  .batt::after { content:""; position:absolute; left:1px; top:1px; bottom:1px; width:12px; background: var(--ok); border-radius:1px; }
+  .batt::before { content:""; position:absolute; right:-3px; top:3px; width:2px; height:4px; background: var(--text); border-radius:0 1px 1px 0; }
+
+  /* 顶栏 */
+  .appbar {
+    flex: none; background: var(--card);
+    padding: 4px 16px 14px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .appbar h1 { font-size: 1.2em; font-weight: 600; letter-spacing: -.3px; }
+  .appbar .sub { font-size: .72em; color: var(--sub); margin-top: 2px; }
+  .appbar-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 2.2em; height: 2.2em; border-radius: 50%;
+    border: 1px solid var(--line); background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: .15s;
+  }
+  .icon-btn:hover { background: var(--primary-soft); border-color: var(--primary); }
+  .icon-btn.on { background: var(--primary); border-color: var(--primary); }
+  .icon-btn.on svg { stroke: #fff; }
+  .icon-btn svg { width: 1.1em; height: 1.1em; stroke: var(--text); fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* 内容区 */
+  .screen { flex: 1; overflow-y: auto; display: none; }
+  .screen.active { display: block; }
+  .screen::-webkit-scrollbar { width: 0; }
+  .pad { padding: 14px 16px 18px; }
+
+  /* 底部 Tab */
+  .tabbar {
+    flex: none; background: var(--card); border-top: 1px solid var(--line);
+    display: flex; padding: 8px 0 12px;
+  }
+  .tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: .66em; color: var(--sub); cursor: pointer; transition: .15s;
+  }
+  .tab svg { width: 1.5em; height: 1.5em; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .tab.active { color: var(--primary); }
+
+  /* ===== 通用组件 ===== */
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    padding: 15px; margin-bottom: 12px;
+    border: 1px solid var(--line);
+  }
+  .card-title { font-size: .86em; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+  .card-title .more { font-size: .8em; font-weight: 400; color: var(--primary); cursor: pointer; }
+
+  .row { display: flex; align-items: center; gap: 12px; }
+  .col { flex: 1; min-width: 0; }
+  .muted { color: var(--sub); font-size: .78em; }
+  .tiny { font-size: .7em; color: var(--sub); }
+
+  .btn {
+    border: none; border-radius: 10px; padding: 12px 18px;
+    font-size: .88em; font-weight: 600; cursor: pointer;
+    font-family: inherit; transition: .15s; background: var(--primary); color: #fff;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn.ghost { background: #fff; color: var(--text); border: 1px solid var(--line); }
+  .btn.ghost:hover { border-color: var(--primary); color: var(--primary); }
+  .btn.block { width: 100%; display: block; }
+  .btn.lg { padding: 18px; font-size: 1.02em; border-radius: 14px; }
+  .btn.ok { background: var(--ok); }
+  .btn.gray { background: #eef1f5; color: var(--sub); }
+
+  .badge {
+    font-size: .68em; padding: 3px 8px; border-radius: 20px;
+    font-weight: 600; white-space: nowrap;
+  }
+  .badge.ok    { background: var(--ok-soft);     color: var(--ok); }
+  .badge.warn  { background: var(--warn-soft);   color: var(--warn); }
+  .badge.bad   { background: var(--danger-soft); color: var(--danger); }
+  .badge.wait  { background: #eef1f5;            color: var(--sub); }
+
+  /* 进度 */
+  .prog-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+  .prog-num { font-size: 2em; font-weight: 700; color: var(--primary); letter-spacing: -1px; }
+  .prog-bar { height: 9px; background: #eef1f5; border-radius: 6px; overflow: hidden; }
+  .prog-fill { height: 100%; background: linear-gradient(90deg, #2f6fed, #10a35a); border-radius: 6px; transition: width .4s; }
+
+  /* 服药条目 */
+  .dose {
+    display: flex; gap: 12px; padding: 13px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .dose:last-child { border-bottom: none; padding-bottom: 2px; }
+  .dose-time {
+    flex: none; width: 3.6em; font-size: .95em; font-weight: 700;
+    letter-spacing: -.3px; padding-top: 1px;
+  }
+  .dose-time.done { color: var(--sub); }
+  .pill-icon {
+    flex: none; width: 2.2em; height: 2.2em; border-radius: 9px;
+    background: var(--primary-soft); display: flex; align-items: center; justify-content: center;
+  }
+  .pill-icon svg { width: 1.15em; height: 1.15em; stroke: var(--primary); fill: none; stroke-width: 1.9; stroke-linecap: round; }
+  .dose-name { font-size: .95em; font-weight: 600; margin-bottom: 3px; }
+  .dose-meta { font-size: .75em; color: var(--sub); }
+  .dose-cta { flex: none; align-self: center; }
+  .check-btn {
+    width: 2.6em; height: 2.6em; border-radius: 50%;
+    border: 2px solid var(--primary); background: #fff;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: .15s;
+  }
+  .check-btn:hover { background: var(--primary-soft); }
+  .check-btn svg { width: 1.3em; height: 1.3em; stroke: var(--primary); fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* 表单 */
+  .field { margin-bottom: 15px; }
+  .field label { display: block; font-size: .78em; font-weight: 600; color: var(--sub); margin-bottom: 7px; }
+  .field input, .field select {
+    width: 100%; padding: 11px 13px; font-size: .9em; font-family: inherit;
+    border: 1px solid var(--line); border-radius: 10px; background: #fafbfc; color: var(--text);
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--primary); background: #fff; }
+  .seg { display: flex; gap: 7px; flex-wrap: wrap; }
+  .seg span {
+    padding: 9px 13px; font-size: .8em; border: 1px solid var(--line);
+    border-radius: 9px; cursor: pointer; background: #fafbfc; transition: .15s;
+  }
+  .seg span.sel { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+
+  /* 列表行 */
+  .list-row {
+    display: flex; align-items: center; gap: 12px; padding: 13px 0;
+    border-bottom: 1px solid var(--line); cursor: pointer;
+  }
+  .list-row:last-child { border-bottom: none; padding-bottom: 2px; }
+  .list-row .chev { color: #c3cad3; font-size: 1.1em; }
+
+  /* 开关 */
+  .switch { width: 44px; height: 26px; border-radius: 14px; background: #d5dbe2; position: relative; cursor: pointer; transition: .2s; flex: none; }
+  .switch::after { content:""; position: absolute; width: 20px; height: 20px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .switch.on { background: var(--primary); }
+  .switch.on::after { left: 21px; }
+
+  /* 日历 */
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .cal-h { text-align: center; font-size: .68em; color: var(--sub); padding-bottom: 4px; }
+  .cal-d {
+    aspect-ratio: 1; border-radius: 8px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; font-size: .78em; gap: 2px;
+    background: #f6f8fa; border: 1px solid transparent;
+  }
+  .cal-d .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .cal-d.ok   { background: var(--ok-soft); }
+  .cal-d.ok .dot { background: var(--ok); }
+  .cal-d.warn { background: var(--warn-soft); }
+  .cal-d.warn .dot { background: var(--warn); }
+  .cal-d.bad  { background: var(--danger-soft); }
+  .cal-d.bad .dot { background: var(--danger); }
+  .cal-d.today { border-color: var(--primary); font-weight: 700; }
+
+  /* 统计条 */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .stat { background: #f8fafc; border-radius: 11px; padding: 12px 10px; text-align: center; }
+  .stat b { display: block; font-size: 1.42em; font-weight: 700; letter-spacing: -.5px; }
+  .stat span { font-size: .7em; color: var(--sub); }
+
+  .hbar { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; font-size: .78em; }
+  .hbar .lbl { width: 4.2em; flex: none; color: var(--sub); }
+  .hbar .track { flex: 1; height: 8px; background: #eef1f5; border-radius: 5px; overflow: hidden; }
+  .hbar .fill { height: 100%; border-radius: 5px; }
+  .hbar .val { width: 2.6em; text-align: right; flex: none; font-weight: 600; }
+
+  /* ===== 强提醒全屏 ===== */
+  .fullscreen-alert {
+    position: absolute; inset: 0; z-index: 90;
+    background: linear-gradient(160deg, #c92a2a, #8f1d1d);
+    color: #fff; display: none; flex-direction: column;
+    align-items: center; justify-content: center; padding: 30px 24px; text-align: center;
+  }
+  .fullscreen-alert.show { display: flex; }
+  .fs-bell {
+    width: 92px; height: 92px; border-radius: 50%; background: rgba(255,255,255,.18);
+    display: flex; align-items: center; justify-content: center; margin-bottom: 22px;
+    animation: bellshake 1.1s infinite;
+  }
+  .fs-bell svg { width: 46px; height: 46px; stroke: #fff; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  @keyframes bellshake { 0%,100%{transform:rotate(0)} 20%{transform:rotate(-11deg)} 40%{transform:rotate(11deg)} 60%{transform:rotate(-7deg)} 80%{transform:rotate(7deg)} }
+  .fs-time { font-size: 1em; opacity: .85; letter-spacing: 3px; margin-bottom: 8px; }
+  .fs-name { font-size: 1.9em; font-weight: 700; line-height: 1.25; margin-bottom: 6px; }
+  .fs-dose { font-size: 1.05em; opacity: .9; margin-bottom: 34px; }
+  .fs-btns { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+  .fs-btns .btn { background: #fff; color: #8f1d1d; font-size: 1.08em; padding: 19px; border-radius: 15px; }
+  .fs-btns .btn.outline { background: transparent; color: #fff; border: 2px solid rgba(255,255,255,.65); }
+
+  /* ===== 弹层 ===== */
+  .overlay {
+    position: absolute; inset: 0; z-index: 80; background: rgba(15,22,35,.5);
+    display: none; align-items: flex-end; backdrop-filter: blur(2px);
+  }
+  .overlay.show { display: flex; }
+  .sheet {
+    width: 100%; background: #fff; border-radius: 22px 22px 0 0;
+    padding: 22px 20px 24px; animation: slideup .26s ease;
+  }
+  @keyframes slideup { from { transform: translateY(40px); opacity: .5 } to { transform: translateY(0); opacity: 1 } }
+  .sheet h3 { font-size: 1.1em; font-weight: 700; margin-bottom: 8px; }
+  .sheet p { font-size: .84em; color: var(--sub); line-height: 1.65; margin-bottom: 16px; }
+  .sheet .note {
+    background: var(--warn-soft); color: #8a5300; font-size: .74em;
+    padding: 10px 12px; border-radius: 9px; line-height: 1.55; margin-bottom: 16px;
+  }
+
+  /* Toast */
+  .toast {
+    position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(14px);
+    background: rgba(20,24,31,.93); color: #fff; font-size: .82em;
+    padding: 11px 20px; border-radius: 22px; opacity: 0; pointer-events: none;
+    transition: .25s; z-index: 95; white-space: nowrap; max-width: 88%;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* 演示面板 */
+  .demo-panel {
+    position: fixed; right: 20px; top: 28px; width: 190px;
+    background: #fff; border-radius: 14px; padding: 14px;
+    box-shadow: 0 8px 26px rgba(20,30,50,.14); font-size: 13px;
+  }
+  .demo-panel h4 { font-size: 12px; color: var(--sub); font-weight: 600; margin-bottom: 10px; letter-spacing: .5px; }
+  .demo-panel button {
+    display: block; width: 100%; text-align: left; padding: 8px 11px; margin-bottom: 6px;
+    border: 1px solid var(--line); background: #fafbfc; border-radius: 8px;
+    font-size: 12.5px; font-family: inherit; cursor: pointer; transition: .15s; color: var(--text);
+  }
+  .demo-panel button:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+  .demo-panel hr { border: none; border-top: 1px solid var(--line); margin: 10px 0; }
+  @media (max-width: 760px) { .demo-panel { display: none; } }
+
+  /* 引导页 */
+  .onboard {
+    min-height: 100%; background: #fff; padding: 46px 24px 30px;
+    display: flex; flex-direction: column;
+  }
+  .logo {
+    width: 68px; height: 68px; border-radius: 20px; background: var(--primary);
+    display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
+  }
+  .logo svg { width: 36px; height: 36px; stroke: #fff; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .disclaimer {
+    background: #f7f9fb; border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px; font-size: .76em; color: #4a5461; line-height: 1.75; margin: 18px 0;
+  }
+  .agree { display: flex; gap: 10px; align-items: flex-start; font-size: .78em; margin-bottom: 18px; cursor: pointer; }
+  .cbx {
+    width: 20px; height: 20px; flex: none; border: 2px solid #c7cfd8; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center; margin-top: 1px; transition: .15s;
+  }
+  .cbx.on { background: var(--primary); border-color: var(--primary); }
+  .cbx svg { width: 12px; height: 12px; stroke: #fff; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; display: none; }
+  .cbx.on svg { display: block; }
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+
+  <div class="statusbar">
+    <span id="sbTime">07:00</span>
+    <span class="right"><span>中国移动</span><span class="batt"></span></span>
+  </div>
+
+  <!-- ================= 引导页 ================= -->
+  <div class="screen active" id="scr-onboard">
+    <div class="onboard">
+      <div class="logo">
+        <svg viewBox="0 0 24 24"><path d="M10.5 3.5 3.5 10.5a5 5 0 0 0 7 7l7-7a5 5 0 0 0-7-7Z"/><path d="M7 7l7 7"/></svg>
+      </div>
+      <h1 style="font-size:1.7em;font-weight:700;letter-spacing:-.5px;line-height:1.25;">药准时</h1>
+      <p style="color:var(--sub);font-size:.88em;margin-top:8px;line-height:1.6;">让该吃的药，一次都不落下。</p>
+
+      <div class="disclaimer">
+        <b style="color:var(--text);display:block;margin-bottom:6px;font-size:1.05em;">免责声明</b>
+        本应用仅用于提醒与记录用药时间，不提供任何医疗建议，不能替代医生或药师的诊断与处方。请严格遵照医嘱服药。
+      </div>
+
+      <div class="agree" onclick="toggleAgree()">
+        <div class="cbx" id="cbx"><svg viewBox="0 0 24 24"><path d="M5 12.5l5 5L19 7"/></svg></div>
+        <span>我已阅读并同意上述免责声明，以及<a style="color:var(--primary)">《隐私政策》</a>。我理解本应用不能替代医嘱。</span>
+      </div>
+
+      <button class="btn block lg" id="startBtn" style="opacity:.45;pointer-events:none;" onclick="go('today')">开始使用</button>
+      <p class="tiny" style="text-align:center;margin-top:14px;">下一步将申请通知与提醒权限，用于准时提醒你服药</p>
+    </div>
+  </div>
+
+  <!-- ================= 今日 ================= -->
+  <div class="screen" id="scr-today">
+    <div class="appbar">
+      <div>
+        <h1>今天</h1>
+        <div class="sub">10 月 10 日 星期六</div>
+      </div>
+      <div class="appbar-actions">
+        <div class="icon-btn" id="elderBtn" onclick="toggleElder()" title="长者模式">
+          <svg viewBox="0 0 24 24"><path d="M12 3v18M5 8v8M19 8v8M8.5 5.5v13M15.5 5.5v13"/></svg>
+        </div>
+        <div class="icon-btn" id="privacyBtn" onclick="togglePrivacy()" title="隐藏药名">
+          <svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="pad">
+      <div class="card">
+        <div class="prog-head">
+          <span class="prog-num" id="progNum">2/5</span>
+          <span class="muted">今日服药完成</span>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:40%"></div></div>
+        <p class="tiny" style="margin-top:10px;">下一剂：12:00 二甲双胍缓释片（餐中）</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span>今日时间轴</span><span class="more" onclick="go('plan')">查看 7 天</span></div>
+
+        <div class="dose">
+          <div class="dose-time done" style="color:var(--sub)">07:00</div>
+          <div class="pill-icon"><svg viewBox="0 0 24 24"><path d="M10.5 3.5 3.5 10.5a5 5 0 0 0 7 7l7-7a5 5 0 0 0-7-7Z"/></svg></div>
+          <div class="col">
+            <div class="dose-name">苯磺酸氨氯地平片</div>
+            <div class="dose-meta">1 片 · 餐前 30 分钟 · 07:04 已服</div>
+          </div>
+          <div class="dose-cta"><span class="badge ok">已按时</span></div>
+        </div>
+
+        <div class="dose">
+          <div class="dose-time done" style="color:var(--sub)">08:00</div>
+          <div class="pill-icon"><svg viewBox="0 0 24 24"><path d="M10.5 3.5 3.5 10.5a5 5 0 0 0 7 7l7-7a5 5 0 0 0-7-7Z"/></svg></div>
+          <div class="col">
+            <div class="dose-name">阿司匹林肠溶片</div>
+            <div class="dose-meta">1 片 · 餐后 · 08:12 已服</div>
+          </div>
+          <div class="dose-cta"><span class="badge warn">延迟</span></div>
+        </div>
+
+        <div class="dose">
+          <div class="dose-time">12:00</div>
+          <div class="pill-icon"><svg viewBox="0 0 24 24"><path d="M10.5 3.5 3.5 10.5a5 5 0 0 0 7 7l7-7a5 5 0 0 0-7-7Z"/></svg></div>
+          <div class="col">
+            <div class="dose-name">二甲双胍缓释片</div>
+            <div class="dose-meta">1 片 · 餐中</div>
+          </div>
+          <div class="dose-cta">
+            <div class="check-btn" title="我已服药" onclick="markTaken(this)"><svg viewBox="0 0 24 24"><path d="M5 12.5l5 5L19 7"/></svg></div>
+          </div>
+        </div>
+
+        <div class="dose">
+          <div class="dose-time">18:00</div>
+          <div class="pill-icon"><svg viewBox="0 0 24 24"><path d="M10.5 3.5 3.5 10.5a5 5 0 0 0 7 7l7-7a5 5 0 0 0-7-7Z"/></svg></div>
+          <div class="col">
+            <div class="dose-name">二甲双胍缓释片</div>
+            <div class="dose-meta">1 片 · 餐中</div>
+          </div>
+          <div class="dose-cta"><span class="badge wait">待服</span></div>
+        </div>
+
+        <div class="dose">
+          <div class="dose-time">21:00</div>
+          <div class="pill-icon"><svg viewBox="0 0 24 24"><path d="M10.5 3.5 3.5 10.5a5 5 0 0 0 7 7l7-7a5 5 0 0 0-7-7Z"/></svg></div>
+          <div class="col">
+            <div class="dose-name">阿托伐他汀钙片</div>
+            <div class="dose-meta">1 片 · 睡前</div>
+          </div>
+          <div class="dose-cta"><span class="badge wait">待服</span></div>
+        </div>
+      </div>
+
+      <div class="card" style="background:var(--primary-soft);border-color:#cfe0fb;">
+        <div class="row">
+          <div class="pill-icon" style="background:#fff;"><svg viewBox="0 0 24 24"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg></div>
+          <div class="col">
+            <div style="font-size:.86em;font-weight:600;margin-bottom:2px;">漏服后怎么办？</div>
+            <div class="tiny">查看漏服补救流程说明</div>
+          </div>
+          <span class="chev" style="color:var(--primary)" onclick="showMissFlow()">›</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 用药 ================= -->
+  <div class="screen" id="scr-meds">
+    <div class="appbar">
+      <div><h1>我的药箱</h1><div class="sub">3 种药品 · 4 条用药计划</div></div>
+      <div class="appbar-actions"><div class="icon-btn" onclick="go('edit')"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></div></div>
+    </div>
+    <div class="pad">
+      <div class="card">
+        <div class="list-row" onclick="go('edit')">
+          <div class="pill-icon"><svg viewBox="0 0 24 24"><path d="M10.5 3.5 3.5 10.5a5 5 0 0 0 7 7l7-7a5 5 0 0 0-7-7Z"/></svg></div>
+          <div class="col">
+            <div class="dose-name">苯磺酸氨氯地平片</div>
+            <div class="dose-meta">5mg · 每日 1 次 · 07:00 餐前</div>
+          </div>
+          <span class="chev">›</span>
+        </div>
+        <div class="list-row" onclick="go('edit')">
+          <div class="pill-icon"><svg viewBox="0 0 24 24"><path d="M10.5 3.5 3.5 10.5a5 5 0 0 0 7 7l7-7a5 5 0 0 0-7-7Z"/></svg></div>
+          <div class="col">
+            <div class="dose-name">二甲双胍缓释片</div>
+            <div class="dose-meta">0.5g · 每日 2 次 · 12:00 / 18:00 餐中</div>
+          </div>
+          <span class="chev">›</span>
+        </div>
+        <div class="list-row" onclick="go('edit')">
+          <div class="pill-icon"><svg viewBox="0 0 24 24"><path d="M10.5 3.5 3.5 10.5a5 5 0 0 0 7 7l7-7a5 5 0 0 0-7-7Z"/></svg></div>
+          <div class="col">
+            <div class="dose-name">阿托伐他汀钙片</div>
+            <div class="dose-meta">20mg · 每日 1 次 · 21:00 睡前</div>
+          </div>
+          <span class="chev">›</span>
+        </div>
+      </div>
+
+      <div class="card" style="background:var(--warn-soft);border-color:#f5e0b8;">
+        <div class="row">
+          <div class="pill-icon" style="background:#fff;"><svg viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg></div>
+          <div class="col">
+            <div style="font-size:.86em;font-weight:600;margin-bottom:2px;">二甲双胍缓释片 剩余不足 3 天</div>
+            <div class="tiny">预计 10 月 13 日服完，请及时补药</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn block ghost" style="padding:14px;" onclick="go('edit')">+ 添加药品</button>
+    </div>
+  </div>
+
+  <!-- ================= 药品编辑 ================= -->
+  <div class="screen" id="scr-edit">
+    <div class="appbar">
+      <div><h1>添加药品</h1><div class="sub">设置用药计划与提醒时间</div></div>
+      <div class="appbar-actions"><div class="icon-btn" onclick="go('meds')"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></div></div>
+    </div>
+    <div class="pad">
+      <div class="card">
+        <div class="field"><label>药品名称</label><input value="苯磺酸氨氯地平片"></div>
+        <div class="field"><label>规格</label><input value="5mg × 7 片 / 盒"></div>
+        <div class="field">
+          <label>剂型</label>
+          <div class="seg">
+            <span class="sel">片剂</span><span>胶囊</span><span>口服液</span><span>滴眼液</span><span>喷雾</span>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>每次剂量</label>
+          <div class="row">
+            <input value="1" style="width:70px;">
+            <div class="seg" style="flex:1;">
+              <span class="sel">片</span><span>半片</span><span>粒</span><span>ml</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">用药频次</div>
+        <div class="field">
+          <div class="seg"><span class="sel">每日 1 次</span><span>每日 2 次</span><span>每日 3 次</span><span>隔日</span><span>自定义</span></div>
+        </div>
+        <div class="field">
+          <label>服药时间</label>
+          <input value="07:00">
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>与进餐的关系</label>
+          <div class="seg">
+            <span>空腹</span><span class="sel">餐前 30 分钟</span><span>餐中</span><span>餐后</span><span>睡前</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">疗程</div>
+        <div class="field" style="margin-bottom:0;">
+          <div class="seg"><span class="sel">长期服用</span><span>指定天数</span><span>指定结束日期</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="list-row" style="cursor:default;">
+          <div class="col"><div style="font-size:.88em;font-weight:600;">提醒不可静默</div><div class="tiny">未确认时自动升级提醒强度</div></div>
+          <div class="switch on"></div>
+        </div>
+        <div class="list-row" style="cursor:default;">
+          <div class="col"><div style="font-size:.88em;font-weight:600;">漏服判定窗口</div><div class="tiny">超过该时长未确认即标记漏服</div></div>
+          <span class="muted" style="font-size:.88em;">2 小时</span>
+        </div>
+      </div>
+
+      <button class="btn block lg" onclick="savePrompt()">保存并生成排程</button>
+      <p class="tiny" style="text-align:center;margin-top:12px;">保存后将生成未来 90 天的提醒计划</p>
+    </div>
+  </div>
+
+  <!-- ================= 时间表预览 ================= -->
+  <div class="screen" id="scr-plan">
+    <div class="appbar">
+      <div><h1>未来 7 天时间表</h1><div class="sub">共 12 次提醒 · 已生成 90 天</div></div>
+      <div class="appbar-actions"><div class="icon-btn" onclick="go('today')"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div></div>
+    </div>
+    <div class="pad">
+      <div class="card">
+        <div class="card-title">10 月 10 日 · 今天</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;">
+          <span class="badge ok" style="padding:8px 12px;">07:00 氨氯地平</span>
+          <span class="badge warn" style="padding:8px 12px;">08:00 阿司匹林</span>
+          <span class="badge wait" style="padding:8px 12px;">12:00 二甲双胍</span>
+          <span class="badge wait" style="padding:8px 12px;">18:00 二甲双胍</span>
+          <span class="badge wait" style="padding:8px 12px;">21:00 阿托伐他汀</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">10 月 11 日 · 明天</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;">
+          <span class="badge wait" style="padding:8px 12px;">07:00 氨氯地平</span>
+          <span class="badge wait" style="padding:8px 12px;">08:00 阿司匹林</span>
+          <span class="badge wait" style="padding:8px 12px;">12:00 二甲双胍</span>
+          <span class="badge wait" style="padding:8px 12px;">18:00 二甲双胍</span>
+          <span class="badge wait" style="padding:8px 12px;">21:00 阿托伐他汀</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">10 月 12 日 · 周一</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;">
+          <span class="badge wait" style="padding:8px 12px;">07:00 氨氯地平</span>
+          <span class="badge wait" style="padding:8px 12px;">08:00 阿司匹林</span>
+          <span class="badge wait" style="padding:8px 12px;">12:00 二甲双胍</span>
+          <span class="badge wait" style="padding:8px 12px;">18:00 二甲双胍</span>
+          <span class="badge wait" style="padding:8px 12px;">21:00 阿托伐他汀</span>
+        </div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <p class="tiny">已生成未来 90 天共 450 次提醒</p>
+        <p class="tiny" style="margin-top:6px;">修改处方仅影响未来排程，历史记录不会被改写</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 记录 ================= -->
+  <div class="screen" id="scr-log">
+    <div class="appbar">
+      <div><h1>服药记录</h1><div class="sub">2026 年 10 月</div></div>
+      <div class="appbar-actions"><div class="icon-btn" onclick="go('stats')"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l3-4 3 3 5-7"/></svg></div></div>
+    </div>
+    <div class="pad">
+      <div class="card">
+        <div class="card-title">
+          <span>本月热力图</span>
+          <span class="row" style="gap:10px;font-size:.72em;font-weight:400;color:var(--sub);">
+            <span>● 按时</span><span style="color:var(--warn)">● 延迟</span><span style="color:var(--danger)">● 漏服</span>
+          </span>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span>10 月 9 日 明细</span><span class="more">导出报告</span></div>
+        <div class="dose">
+          <div class="dose-time done" style="color:var(--sub)">07:00</div>
+          <div class="col"><div class="dose-name">苯磺酸氨氯地平片</div><div class="dose-meta">实际 07:03 · 延迟 3 分钟</div></div>
+          <span class="badge ok">已按时</span>
+        </div>
+        <div class="dose">
+          <div class="dose-time done" style="color:var(--sub)">12:00</div>
+          <div class="col"><div class="dose-name">二甲双胍缓释片</div><div class="dose-meta">实际 12:41 · 延迟 41 分钟</div></div>
+          <span class="badge warn">延迟</span>
+        </div>
+        <div class="dose">
+          <div class="dose-time done" style="color:var(--sub)">18:00</div>
+          <div class="col"><div class="dose-name">二甲双胍缓释片</div><div class="dose-meta">未记录 · 已补服 19:20</div></div>
+          <span class="badge bad">漏服</span>
+        </div>
+        <div class="dose">
+          <div class="dose-time done" style="color:var(--sub)">21:00</div>
+          <div class="col"><div class="dose-name">阿托伐他汀钙片</div><div class="dose-meta">实际 20:58 · 延误前 2 分钟</div></div>
+          <span class="badge ok">已按时</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 统计 ================= -->
+  <div class="screen" id="scr-stats">
+    <div class="appbar">
+      <div><h1>依从性报告</h1><div class="sub">近 30 天</div></div>
+      <div class="appbar-actions"><div class="icon-btn" onclick="go('log')"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div></div>
+    </div>
+    <div class="pad">
+      <div class="card">
+        <div class="stat-grid">
+          <div class="stat"><b style="color:var(--ok)">87%</b><span>按时率</span></div>
+          <div class="stat"><b style="color:var(--warn)">9%</b><span>延迟率</span></div>
+          <div class="stat"><b style="color:var(--danger)">4%</b><span>漏服率</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">各时段按时率</div>
+        <div class="hbar"><span class="lbl">早 07:00</span><div class="track"><div class="fill" style="width:96%;background:var(--ok)"></div></div><span class="val">96%</span></div>
+        <div class="hbar"><span class="lbl">午 12:00</span><div class="track"><div class="fill" style="width:78%;background:var(--ok)"></div></div><span class="val">78%</span></div>
+        <div class="hbar"><span class="lbl">晚 18:00</span><div class="track"><div class="fill" style="width:72%;background:var(--warn)"></div></div><span class="val">72%</span></div>
+        <div class="hbar" style="margin-bottom:0;"><span class="lbl">睡前 21:00</span><div class="track"><div class="fill" style="width:91%;background:var(--ok)"></div></div><span class="val">91%</span></div>
+        <p class="tiny" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
+          发现：晚间 18:00 时段最容易漏服，建议将该时段提醒方式改为「全屏强提醒」。
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">单药依从率</div>
+        <div class="hbar"><span class="lbl">氨氯地平</span><div class="track"><div class="fill" style="width:98%;background:var(--ok)"></div></div><span class="val">98%</span></div>
+        <div class="hbar"><span class="lbl">阿司匹林</span><div class="track"><div class="fill" style="width:93%;background:var(--ok)"></div></div><span class="val">93%</span></div>
+        <div class="hbar" style="margin-bottom:0;"><span class="lbl">二甲双胍</span><div class="track"><div class="fill" style="width:74%;background:var(--warn)"></div></div><span class="val">74%</span></div>
+      </div>
+
+      <button class="btn block ghost" style="padding:14px;">导出复诊报告（PDF）</button>
+    </div>
+  </div>
+
+  <!-- ================= 我的 ================= -->
+  <div class="screen" id="scr-me">
+    <div class="appbar">
+      <div><h1>我的</h1><div class="sub">设置与数据管理</div></div>
+    </div>
+    <div class="pad">
+      <div class="card">
+        <div class="card-title">显示与无障碍</div>
+        <div class="list-row" style="cursor:default;">
+          <div class="col"><div style="font-size:.88em;font-weight:600;">长者模式</div><div class="tiny">超大字号、高对比度、简化层级</div></div>
+          <div class="switch" id="swElder" onclick="toggleElder(true)"></div>
+        </div>
+        <div class="list-row" style="cursor:default;">
+          <div class="col"><div style="font-size:.88em;font-weight:600;">隐藏药品名称</div><div class="tiny">通知中不显示药名与剂量，保护隐私</div></div>
+          <div class="switch" id="swPrivacy" onclick="togglePrivacy(true)"></div>
+        </div>
+        <div class="list-row" style="cursor:default;">
+          <div class="col"><div style="font-size:.88em;font-weight:600;">语音播报</div><div class="tiny">朗读提醒内容，适合视力不便的用户</div></div>
+          <div class="switch on"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">提醒方式</div>
+        <div class="list-row" style="cursor:default;">
+          <div class="col"><div style="font-size:.88em;font-weight:600;">系统通知</div></div>
+          <div class="switch on"></div>
+        </div>
+        <div class="list-row" style="cursor:default;">
+          <div class="col"><div style="font-size:.88em;font-weight:600;">提示音与震动</div></div>
+          <div class="switch on"></div>
+        </div>
+        <div class="list-row" style="cursor:default;">
+          <div class="col"><div style="font-size:.88em;font-weight:600;">全屏强提醒（15 分钟未确认）</div></div>
+          <div class="switch on"></div>
+        </div>
+        <div class="list-row" style="cursor:default;">
+          <div class="col"><div style="font-size:.88em;font-weight:600;">通知家属（30 分钟未确认）</div></div>
+          <div class="switch on"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">家属协同</div>
+        <div class="list-row">
+          <div class="pill-icon" style="background:var(--ok-soft);"><svg viewBox="0 0 24 24" style="stroke:var(--ok)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+          <div class="col"><div style="font-size:.88em;font-weight:600;">女儿 · 小张</div><div class="tiny">可查看服药记录并接收漏服告警</div></div>
+          <span class="badge ok">已绑定</span>
+        </div>
+        <p class="tiny" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
+          照护者不可修改药物剂量与处方，仅可查看与提醒。
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">数据</div>
+        <div class="list-row"><div class="col"><div style="font-size:.88em;">导出加密备份</div></div><span class="chev">›</span></div>
+        <div class="list-row"><div class="col"><div style="font-size:.88em;">一键删除全部数据</div></div><span class="chev" style="color:var(--danger)">›</span></div>
+        <div class="list-row"><div class="col"><div style="font-size:.88em;">隐私政策</div></div><span class="chev">›</span></div>
+        <div class="list-row"><div class="col"><div style="font-size:.88em;">免责声明</div></div><span class="chev">›</span></div>
+      </div>
+
+      <p class="tiny" style="text-align:center;line-height:1.7;">
+        本应用仅用于提醒与记录用药时间，不提供任何医疗建议，<br>不能替代医生或药师的诊断与处方。请严格遵照医嘱服药。
+      </p>
+    </div>
+  </div>
+
+  <!-- 底部 Tab -->
+  <div class="tabbar" id="tabbar">
+    <div class="tab active" data-tab="today" onclick="go('today')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>今日</span>
+    </div>
+    <div class="tab" data-tab="meds" onclick="go('meds')">
+      <svg viewBox="0 0 24 24"><path d="M10.5 3.5 3.5 10.5a5 5 0 0 0 7 7l7-7a5 5 0 0 0-7-7Z"/><path d="M7 7l7 7"/></svg><span>用药</span>
+    </div>
+    <div class="tab" data-tab="log" onclick="go('log')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><span>记录</span>
+    </div>
+    <div class="tab" data-tab="me" onclick="go('me')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg><span>我的</span>
+    </div>
+  </div>
+
+  <!-- ===== 强提醒全屏 ===== -->
+  <div class="fullscreen-alert" id="fsAlert">
+    <div class="fs-bell"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></div>
+    <div class="fs-time">07:00</div>
+    <div class="fs-name" id="fsName">苯磺酸氨氯地平片</div>
+    <div class="fs-dose" id="fsDose">1 片 · 餐前 30 分钟</div>
+    <div class="fs-btns">
+      <button class="btn" onclick="fsConfirm()">我已服药</button>
+      <button class="btn outline" onclick="fsSnooze()">稍后提醒 10 分钟</button>
+    </div>
+  </div>
+
+  <!-- ===== 弹层 ===== -->
+  <div class="overlay" id="overlay" onclick="if(event.target===this)closeSheet()">
+    <div class="sheet" id="sheet"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<!-- ===== 演示控制台 ===== -->
+<div class="demo-panel">
+  <h4>演示控制台</h4>
+  <button onclick="go('onboard')">① 引导页 / 免责声明</button>
+  <button onclick="go('today')">② 今日页</button>
+  <button onclick="go('meds');go('meds')">③ 药箱</button>
+  <button onclick="go('edit')">④ 药品编辑</button>
+  <button onclick="go('plan')">⑤ 7 天排程预览</button>
+  <button onclick="go('log')">⑥ 记录热力图</button>
+  <button onclick="go('stats')">⑦ 依从性报告</button>
+  <button onclick="go('me')">⑧ 设置 / 家属</button>
+  <hr>
+  <button onclick="showAlert()">▶ 演示 L3 全屏强提醒</button>
+  <button onclick="showLadder()">▶ 演示 L1→L5 升级链路</button>
+  <button onclick="showMakeup()">▶ 演示漏服补救</button>
+  <button onclick="showPermission()">▶ 演示权限被拒提示</button>
+  <hr>
+  <button onclick="toggleElder()">切换长者模式</button>
+  <button onclick="togglePrivacy()">切换隐藏药名</button>
+</div>
+
+<script>
+/* ========== 页面切换 ========== */
+const TABS = ['today', 'meds', 'log', 'me'];
+function go(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('scr-' + id);
+  if (el) el.classList.add('active');
+  const bar = document.getElementById('tabbar');
+  bar.style.display = (id === 'onboard') ? 'none' : 'flex';
+  document.querySelectorAll('.tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.tab === id || (id === 'edit' && t.dataset.tab === 'meds') || (id === 'plan' && t.dataset.tab === 'today') || (id === 'stats' && t.dataset.tab === 'log'))
+  );
+  const scr = document.getElementById('scr-' + id);
+  if (scr) scr.scrollTop = 0;
+}
+
+/* ========== 引导页 ========== */
+let agreed = false;
+function toggleAgree() {
+  agreed = !agreed;
+  document.getElementById('cbx').classList.toggle('on', agreed);
+  const b = document.getElementById('startBtn');
+  b.style.opacity = agreed ? '1' : '.45';
+  b.style.pointerEvents = agreed ? 'auto' : 'none';
+}
+
+/* ========== 长者模式 / 隐私 ========== */
+let elder = false, privacy = false;
+function toggleElder() {
+  elder = !elder;
+  document.getElementById('phone').classList.toggle('elder', elder);
+  document.getElementById('elderBtn').classList.toggle('on', elder);
+  const sw = document.getElementById('swElder');
+  if (sw) sw.classList.toggle('on', elder);
+  toast(elder ? '长者模式已开启：字号放大、对比度增强' : '长者模式已关闭');
+}
+function togglePrivacy() {
+  privacy = !privacy;
+  document.getElementById('privacyBtn').classList.toggle('on', privacy);
+  const sw = document.getElementById('swPrivacy');
+  if (sw) sw.classList.toggle('on', privacy);
+  toast(privacy ? '隐藏药名已开启：通知中不会显示药品信息' : '隐藏药名已关闭');
+}
+
+/* ========== Toast ========== */
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+/* ========== 打卡 ========== */
+function markTaken(el) {
+  el.outerHTML = '<span class="badge ok">已按时</span>';
+  const n = document.getElementById('progNum');
+  n.textContent = '3/5';
+  document.getElementById('progFill').style.width = '60%';
+  toast('已记录：12:00 二甲双胍缓释片 · 准时');
+}
+
+/* ========== 强提醒 ========== */
+function showAlert() {
+  const now = new Date();
+  document.querySelector('.fs-time').textContent =
+    String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  document.getElementById('fsName').textContent = privacy ? '用药提醒时间到' : '苯磺酸氨氯地平片';
+  document.getElementById('fsDose').textContent = privacy ? '请打开应用查看详情' : '1 片 · 餐前 30 分钟';
+  document.getElementById('fsAlert').classList.add('show');
+}
+function fsConfirm() {
+  document.getElementById('fsAlert').classList.remove('show');
+  toast('已记录服药，升级提醒已停止');
+}
+function fsSnooze() {
+  document.getElementById('fsAlert').classList.remove('show');
+  toast('将在 10 分钟后再次提醒');
+}
+
+/* ========== 弹层 ========== */
+function openSheet(html) {
+  document.getElementById('sheet').innerHTML = html;
+  document.getElementById('overlay').classList.add('show');
+}
+function closeSheet() { document.getElementById('overlay').classList.remove('show'); }
+
+function showLadder() {
+  openSheet(`
+    <h3>提醒升级链路演示</h3>
+    <p>未确认时自动逐级升级，不会静默失败。每一步都会取消前一级的重复触发。</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:#fdecec;border-radius:10px;">
+        <b style="width:64px;font-size:.8em;color:#8f1d1d;">L1 到点</b>
+        <span style="font-size:.8em;color:#5a1a1a;">通知 + 提示音 + 短震动</span></div>
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:#fbdcdc;border-radius:10px;">
+        <b style="width:64px;font-size:.8em;color:#8f1d1d;">L2 +5 分</b>
+        <span style="font-size:.8em;color:#5a1a1a;">重复通知 + 音量提升 + 长震动</span></div>
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:#f6bcbc;border-radius:10px;">
+        <b style="width:64px;font-size:.8em;color:#6b1616;">L3 +15 分</b>
+        <span style="font-size:.8em;color:#4a1010;">全屏强提醒，持续响铃直到手动关闭</span></div>
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:#e5726f;border-radius:10px;">
+        <b style="width:64px;font-size:.8em;color:#fff;">L4 +30 分</b>
+        <span style="font-size:.8em;color:#fff;">推送通知给绑定家属，可一键拨号</span></div>
+      <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;background:#a32d2d;border-radius:10px;">
+        <b style="width:64px;font-size:.8em;color:#fff;">L5 超窗</b>
+        <span style="font-size:.8em;color:#fff;">标记漏服，进入补救流程</span></div>
+    </div>
+    <button class="btn block" onclick="closeSheet()">知道了</button>
+  `);
+}
+
+function showMakeup() {
+  openSheet(`
+    <h3>你漏服了 18:00 的二甲双胍缓释片</h3>
+    <p style="margin-bottom:10px;">距离下次服药（明日 12:00）还有 17 小时 40 分钟。</p>
+    <div class="note">是否现在补服？本应用不提供任何医疗建议，如需调整用药方案请咨询医生或药师。</div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn ghost" style="flex:1;" onclick="closeSheet();toast('已标记为跳过，记录保留')">跳过本次</button>
+      <button class="btn" style="flex:1;" onclick="closeSheet();toast('已记录补服，原漏服记录同时保留')">现在补服</button>
+    </div>
+  `);
+}
+
+function showMissFlow() {
+  openSheet(`
+    <h3>漏服了怎么办？</h3>
+    <p>应用会在超过服药窗口（默认 2 小时）后自动标记漏服，并询问你是否补服。</p>
+    <p style="margin-bottom:10px;">判断依据是<strong style="color:var(--text)">距下次服药的时间</strong>：</p>
+    <div style="font-size:.8em;line-height:1.9;color:var(--sub);margin-bottom:16px;">
+      · 距下次服药<b style="color:var(--text)">大于安全间隔</b>：可选择补服或跳过<br>
+      · 距下次服药<b style="color:var(--text)">已接近</b>：建议跳过本次，避免叠加
+    </div>
+    <div class="note">补服记录会独立保存，不会覆盖原来的漏服记录，方便复诊时给医生查看完整的服药情况。本应用不提供任何医疗建议，请遵医嘱。</div>
+    <button class="btn block" onclick="closeSheet()">知道了</button>
+  `);
+}
+
+function showPermission() {
+  openSheet(`
+    <h3 style="color:var(--danger);">通知权限未开启</h3>
+    <p>你拒绝了通知权限，<b style="color:var(--text)">用药提醒将无法正常工作</b>，这一点无法通过其他方式弥补。</p>
+    <p style="margin-bottom:16px;">请前往「系统设置 → 通知 → 药准时」开启通知与提醒权限。iOS 用户还需额外开启「时效性通知」以获得全屏强提醒能力。</p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn ghost" style="flex:1;" onclick="closeSheet()">暂不开启</button>
+      <button class="btn" style="flex:1;" onclick="closeSheet();toast('已跳转系统设置')">前往设置</button>
+    </div>
+  `);
+}
+
+function savePrompt() {
+  openSheet(`
+    <h3>确认保存</h3>
+    <p>保存后将生成未来 90 天的提醒计划，并重建本机提醒调度。</p>
+    <div class="note">修改仅影响未来的提醒，已产生的历史服药记录不会被改写。</div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn ghost" style="flex:1;" onclick="closeSheet()">取消</button>
+      <button class="btn" style="flex:1;" onclick="closeSheet();go('plan')">确认保存</button>
+    </div>
+  `);
+}
+
+/* ========== 日历热力图 ========== */
+(function buildCalendar() {
+  const grid = document.getElementById('calGrid');
+  const heads = ['日','一','二','三','四','五','六'];
+  heads.forEach(h => {
+    const d = document.createElement('div');
+    d.className = 'cal-h'; d.textContent = h; grid.appendChild(d);
+  });
+  // 2026-10-01 是周四 → 前置 4 个空位
+  for (let i = 0; i < 4; i++) {
+    const d = document.createElement('div');
+    d.className = 'cal-d'; d.style.background = 'transparent';
+    grid.appendChild(d);
+  }
+  const seed = [0,0,1,0,2,0,0, 1,0,0,0,0,1,0, 0,2,0,0,0,0,0, 0,1,0,0,0,0,0, 0,0,1,0];
+  for (let d = 1; d <= 31; d++) {
+    const el = document.createElement('div');
+    const cls = ['ok','warn','bad'][seed[d - 1]] || 'ok';
+    el.className = 'cal-d ' + cls;
+    if (d === 10) el.classList.add('today');
+    el.innerHTML = `<span>${d}</span><span class="dot"></span>`;
+    grid.appendChild(el);
+  }
+})();
+
+/* ========== 状态栏时钟 ========== */
+(function clock() {
+  const upd = () => {
+    const n = new Date();
+    document.getElementById('sbTime').textContent =
+      String(n.getHours()).padStart(2, '0') + ':' + String(n.getMinutes()).padStart(2, '0');
+  };
+  upd(); setInterval(upd, 20000);
+})();
+</script>
+</body>
+</html>

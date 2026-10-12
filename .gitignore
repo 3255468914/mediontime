@@ -1,0 +1,23 @@
+# 依赖与构建产物
+node_modules/
+native/android/app/build/
+native/android/build/
+native/android/.gradle/
+*.apk
+
+# Capacitor：cap sync 会重新生成
+native/android/capacitor-cordova-android-plugins/
+
+# Android 本机配置
+native/android/local.properties
+
+# 运行时状态：设备令牌、邀请码、VAPID 私钥，绝不入库
+server/data/
+
+# 开发过程文件
+.workbuddy/
+用药提醒App-开发提示词.md
+
+# 系统杂项
+Thumbs.db
+.DS_Store

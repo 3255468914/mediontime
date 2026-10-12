@@ -1,0 +1,301 @@
+/* 药准时 · 样式表 */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* 配色说明：目标用户是 55+ 慢病患者，所有前景/背景组合都必须满足
+   WCAG 2.1 AA（小字 4.5:1）。下面几个色值是按真实对比度算出来并锁定的，
+   不能随手调亮——改之前请先跑 tests/a11y.test.cjs。
+   原始值的问题：--sub 对页面底色只有 4.18:1；--ok 白底 3.28:1、
+   在 --ok-soft 上仅 2.93:1；--warn 白底 2.94:1；--danger 白底 4.44:1，全部不达标。 */
+:root {
+  --primary: #2f6fed;
+  --primary-dark: #1c4fb8;
+  --primary-soft: #eaf1fe;
+  --ok: #0b7a43;      --ok-soft: #e6f6ed;
+  --warn: #8a5300;    --warn-soft: #fdf3e2;
+  --danger: #b02525;  --danger-soft: #fdecec;
+  --bg: #eef1f5;
+  --card: #ffffff;
+  --text: #14181f;
+  --sub: #5a6472;
+  --line: #e6eaef;
+  --radius: 14px;
+  --focus: #1c4fb8;   /* 键盘焦点环 */
+  --tap: 44px;        /* 最小点击区（WCAG 2.5.5 AAA 推荐值，长者友好） */
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  background: #d9dee5;
+  display: flex; justify-content: center; align-items: flex-start;
+  min-height: 100vh; padding: 28px 16px;
+  -webkit-font-smoothing: antialiased;
+  color: var(--text);
+}
+
+/* ===== 手机外框 ===== */
+.phone {
+  position: relative;
+  width: 375px; height: 780px;
+  background: var(--bg);
+  border-radius: 38px;
+  box-shadow: 0 20px 50px rgba(20,30,50,.22), 0 0 0 10px #1b1f26, 0 0 0 12px #33383f;
+  overflow: hidden;
+  font-size: 15px;
+  display: flex; flex-direction: column;
+}
+/* 长者模式：必须真的做到它宣称的事。
+   此前这里只写了 font-size，而设置页文案是「超大字号、高对比度、简化层级」——
+   也就是界面在说谎。现在把承诺补齐：抬高对比度、加大点击区、减少视觉层。 */
+.phone.elder {
+  font-size: 20px;
+  --sub: #3d4653;      /* 次要文字加深，对白底 9.5:1 */
+  --line: #b9c3cf;     /* 描边加重，分区更清楚 */
+  --text: #0b0e13;
+}
+.phone.elder .card { border-width: 1.5px; padding: 18px; }
+.phone.elder .dose { padding: 18px 0; }
+.phone.elder .list-row { padding: 18px 0; }
+.phone.elder .btn { min-height: 56px; }
+.phone.elder .icon-btn { width: max(2.2em, 56px); height: max(2.2em, 56px); border-width: 2px; }
+.phone.elder .switch { transform: scale(1.15); }
+.phone.elder .overlay { backdrop-filter: none; background: rgba(15, 22, 35, .72); }
+.phone.elder .fs-bell { animation: none; }
+/* 长者模式下字大了以后，单行省略会把「已服 07:04」这类信息截掉——
+   对需要看清用药细节的人正好是倒退。这里改为允许换行、完整显示。 */
+.phone.elder .dose-meta, .phone.elder .dose-name { white-space: normal; overflow: visible; text-overflow: clip; }
+
+/* 状态栏 */
+.statusbar {
+  height: 34px; flex: none;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 22px; font-size: .8em; font-weight: 500;
+  background: var(--card);
+}
+.statusbar .right { display: flex; align-items: center; gap: 6px; }
+.batt { width: 20px; height: 10px; border: 1px solid var(--text); border-radius: 2px; position: relative; }
+.batt::after { content:""; position:absolute; left:1px; top:1px; bottom:1px; width:12px; background: var(--ok); border-radius:1px; }
+.batt::before { content:""; position:absolute; right:-3px; top:3px; width:2px; height:4px; background: var(--text); border-radius:0 1px 1px 0; }
+
+/* 顶栏 */
+.appbar {
+  flex: none; background: var(--card);
+  padding: 4px 16px 14px;
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.appbar h1 { font-size: 1.2em; font-weight: 600; letter-spacing: -.3px; }
+.appbar .sub { font-size: .8em; color: var(--sub); margin-top: 2px; }
+.appbar-actions { display: flex; gap: 8px; }
+.icon-btn {
+  width: max(2.2em, var(--tap)); height: max(2.2em, var(--tap)); border-radius: 50%;
+  border: 1px solid var(--line); background: #fff; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: .15s; font: inherit; color: inherit; appearance: none;
+}
+.icon-btn:hover { background: var(--primary-soft); border-color: var(--primary); }
+.icon-btn.on { background: var(--primary); border-color: var(--primary); }
+.icon-btn.on svg { stroke: #fff; }
+.icon-btn svg { width: 1.1em; height: 1.1em; stroke: var(--text); fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+/* 内容区 */
+.screen { flex: 1; overflow-y: auto; }
+.screen::-webkit-scrollbar { width: 0; }
+.pad { padding: 14px 16px 18px; }
+
+/* 底部 Tab */
+.tabbar { flex: none; background: var(--card); border-top: 1px solid var(--line); display: flex; padding: 8px 0 12px; }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: .8em; color: var(--sub); cursor: pointer; transition: .15s; }
+.tab svg { width: 1.5em; height: 1.5em; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tab.active { color: var(--primary); }
+
+/* ===== 组件 ===== */
+.card { background: var(--card); border-radius: var(--radius); padding: 15px; margin-bottom: 12px; border: 1px solid var(--line); }
+.card-title { font-size: .86em; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+.card-title .more { font-size: .8em; font-weight: 400; color: var(--primary); cursor: pointer; }
+
+.row { display: flex; align-items: center; gap: 12px; }
+.col { flex: 1; min-width: 0; }
+.muted { color: var(--sub); font-size: .8em; }
+.tiny { font-size: .8em; color: var(--sub); }
+
+.btn {
+  border: none; border-radius: 10px; padding: 12px 18px;
+  font-size: .88em; font-weight: 600; cursor: pointer;
+  font-family: inherit; transition: .15s; background: var(--primary); color: #fff;
+  min-height: var(--tap);
+}
+.btn:active { transform: scale(.97); }
+.btn.ghost { background: #fff; color: var(--text); border: 1px solid var(--line); }
+.btn.ghost:hover { border-color: var(--primary); color: var(--primary); }
+.btn.block { width: 100%; display: block; }
+.btn.lg { padding: 18px; font-size: 1.02em; border-radius: 14px; }
+.btn.sm { padding: 9px 12px; font-size: .8em; border-radius: 8px; min-height: 40px; }
+.btn.ok { background: var(--ok); }
+
+.badge { font-size: .8em; padding: 4px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+.badge.ok   { background: var(--ok-soft);     color: var(--ok); }
+.badge.warn { background: var(--warn-soft);   color: var(--warn); }
+.badge.bad  { background: var(--danger-soft); color: var(--danger); }
+.badge.wait { background: #eef1f5;            color: var(--sub); }
+
+/* 进度 */
+.prog-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.prog-num { font-size: 2em; font-weight: 700; color: var(--primary); letter-spacing: -1px; }
+.prog-bar { height: 9px; background: #eef1f5; border-radius: 6px; overflow: hidden; }
+.prog-fill { height: 100%; background: linear-gradient(90deg, #2f6fed, #10a35a); border-radius: 6px; transition: width .4s; }
+
+/* 服药条目 */
+.dose { display: flex; gap: 10px; padding: 13px 0; border-bottom: 1px solid var(--line); align-items: center; }
+.dose:last-child { border-bottom: none; padding-bottom: 2px; }
+.dose-time { flex: none; width: 3.1em; font-size: .86em; font-weight: 700; letter-spacing: -.3px; }
+.pill-icon { flex: none; width: 2em; height: 2em; border-radius: 8px; background: var(--primary-soft); display: flex; align-items: center; justify-content: center; }
+.pill-icon svg { width: 1.05em; height: 1.05em; stroke: var(--primary); fill: none; stroke-width: 1.9; stroke-linecap: round; }
+.dose-name { display: block; font-size: .92em; font-weight: 600; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dose-meta { display: block; font-size: .8em; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dose-cta { flex: none; }
+/* 漏服行：徽标 + 按钮上下叠放，右对齐 */
+.dose-cta.stack { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+/* 表单 */
+.field { margin-bottom: 15px; }
+.field label { display: block; font-size: .8em; font-weight: 600; color: var(--sub); margin-bottom: 7px; }
+.field input, .field select, input[type="time"], input[type="date"], input[type="number"] {
+  width: 100%; padding: 11px 13px; font-size: .9em; font-family: inherit;
+  border: 1px solid var(--line); border-radius: 10px; background: #fafbfc; color: var(--text);
+}
+.field input:focus, input:focus { border-color: var(--primary); background: #fff; }
+
+/* 键盘焦点必须看得见。此前 input 直接 outline:none，
+   键盘用户完全失去位置感。 */
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 5px; }
+.field input:focus-visible, input:focus-visible, select:focus-visible, .seg span:focus-visible {
+  outline: 3px solid var(--focus); outline-offset: 1px;
+}
+.seg { display: flex; gap: 7px; flex-wrap: wrap; }
+.seg span { padding: 9px 13px; font-size: .8em; border: 1px solid var(--line); border-radius: 9px; cursor: pointer; background: #fafbfc; transition: .15s; }
+.seg span.sel { background: var(--primary); color: #fff; border-color: var(--primary); font-weight: 600; }
+
+/* 列表行 */
+.list-row { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.list-row:last-child { border-bottom: none; padding-bottom: 2px; }
+.list-row .chev { color: #c3cad3; font-size: 1.1em; }
+
+/* 开关 */
+/* 开关本体只有 48×28，但 ::before 把点击热区撑到 64×44，
+   满足长者模式下的最小触控区要求；视觉尺寸保持不变。 */
+.switch { width: 48px; height: 28px; border-radius: 14px; background: #d5dbe2; position: relative; cursor: pointer; transition: .2s; flex: none; }
+.switch::before { content: ""; position: absolute; inset: -8px; }
+.switch::after { content:""; position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.switch.on { background: var(--primary); }
+.switch.on::after { left: 23px; }
+
+/* 日历 */
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal-h { text-align: center; font-size: .8em; color: var(--sub); padding-bottom: 4px; }
+.cal-d {
+  aspect-ratio: 1; border-radius: 8px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; font-size: .8em; gap: 2px;
+  background: #f6f8fa; border: 1px solid transparent;
+}
+.cal-d .dot { width: 5px; height: 5px; border-radius: 50%; }
+.cal-d.ok   { background: var(--ok-soft); }
+.cal-d.ok .dot { background: var(--ok); }
+.cal-d.warn { background: var(--warn-soft); }
+.cal-d.warn .dot { background: var(--warn); }
+.cal-d.bad  { background: var(--danger-soft); }
+.cal-d.bad .dot { background: var(--danger); }
+.cal-d.today { border-color: var(--primary); font-weight: 700; }
+
+/* 统计 */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.stat { background: #f8fafc; border-radius: 11px; padding: 12px 10px; text-align: center; }
+.stat b { display: block; font-size: 1.42em; font-weight: 700; letter-spacing: -.5px; }
+.stat span { font-size: .8em; color: var(--sub); }
+
+.hbar { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; font-size: .8em; }
+.hbar .lbl { width: 6.2em; flex: none; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hbar .track { flex: 1; height: 8px; background: #eef1f5; border-radius: 5px; overflow: hidden; }
+.hbar .fill { height: 100%; border-radius: 5px; }
+.hbar .val { width: 2.6em; text-align: right; flex: none; font-weight: 600; }
+
+/* ===== 强提醒全屏 ===== */
+.fullscreen-alert {
+  position: absolute; inset: 0; z-index: 90;
+  background: linear-gradient(160deg, #c92a2a, #8f1d1d);
+  color: #fff; display: none; flex-direction: column;
+  align-items: center; justify-content: center; padding: 30px 24px; text-align: center;
+}
+.fullscreen-alert.show { display: flex; }
+.fs-bell {
+  width: 92px; height: 92px; border-radius: 50%; background: rgba(255,255,255,.18);
+  display: flex; align-items: center; justify-content: center; margin-bottom: 22px;
+  animation: bellshake 1.1s infinite;
+}
+.fs-bell svg { width: 46px; height: 46px; stroke: #fff; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+@keyframes bellshake { 0%,100%{transform:rotate(0)} 20%{transform:rotate(-11deg)} 40%{transform:rotate(11deg)} 60%{transform:rotate(-7deg)} 80%{transform:rotate(7deg)} }
+/* 尊重系统的「减少动态效果」设置：前庭功能敏感者会因抖动/滑入而不适 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .fs-bell { animation: none; }
+  .sheet { animation: none; }
+}
+.fs-time { font-size: 1em; opacity: .85; letter-spacing: 3px; margin-bottom: 8px; }
+.fs-name { font-size: 1.9em; font-weight: 700; line-height: 1.25; margin-bottom: 6px; }
+.fs-dose { font-size: 1.05em; opacity: .9; margin-bottom: 34px; }
+.fs-btns { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.fs-btns .btn { background: #fff; color: #8f1d1d; font-size: 1.08em; padding: 19px; border-radius: 15px; }
+.fs-btns .btn.outline { background: transparent; color: #fff; border: 2px solid rgba(255,255,255,.65); }
+
+/* ===== 弹层 ===== */
+.overlay { position: absolute; inset: 0; z-index: 80; background: rgba(15,22,35,.5); display: none; align-items: flex-end; backdrop-filter: blur(2px); }
+.overlay.show { display: flex; }
+.sheet { width: 100%; background: #fff; border-radius: 22px 22px 0 0; padding: 22px 20px 24px; animation: slideup .26s ease; max-height: 80%; overflow-y: auto; }
+@keyframes slideup { from { transform: translateY(40px); opacity: .5 } to { transform: translateY(0); opacity: 1 } }
+.sheet h3 { font-size: 1.1em; font-weight: 700; margin-bottom: 8px; }
+.sheet p { font-size: .84em; color: var(--sub); line-height: 1.65; margin-bottom: 16px; }
+.sheet .note { background: var(--warn-soft); color: var(--warn); font-size: .8em; padding: 10px 12px; border-radius: 9px; line-height: 1.6; margin-bottom: 16px; }
+
+/* Toast */
+.toast {
+  position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(14px);
+  background: rgba(20,24,31,.93); color: #fff; font-size: .82em;
+  padding: 11px 20px; border-radius: 22px; opacity: 0; pointer-events: none;
+  transition: .25s; z-index: 95; max-width: 88%; text-align: center; line-height: 1.45;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* 引导页 */
+.onboard { min-height: 100%; background: #fff; padding: 46px 24px 30px; display: flex; flex-direction: column; }
+.logo { width: 68px; height: 68px; border-radius: 20px; background: var(--primary); display: flex; align-items: center; justify-content: center; margin-bottom: 20px; }
+.logo svg { width: 36px; height: 36px; stroke: #fff; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.disclaimer { background: #f7f9fb; border: 1px solid var(--line); border-radius: 12px; padding: 14px; font-size: .8em; color: #4a5461; line-height: 1.75; margin: 18px 0; }
+.agree { display: flex; gap: 10px; align-items: flex-start; font-size: .8em; margin-bottom: 18px; cursor: pointer; line-height: 1.6; }
+.cbx { width: 20px; height: 20px; flex: none; border: 2px solid #c7cfd8; border-radius: 5px; display: flex; align-items: center; justify-content: center; margin-top: 1px; transition: .15s; }
+.cbx.on { background: var(--primary); border-color: var(--primary); }
+.cbx svg { width: 12px; height: 12px; stroke: #fff; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; display: none; }
+.cbx.on svg { display: block; }
+
+/* ===== 原生控件复位 =====
+   导航与可点击列表行改用真 <button>（键盘 Tab/Enter 与读屏器天然可用，
+   不必自己补 tabindex + keydown，补漏一处就成了「只有鼠标能用」）。
+   但 button 自带边框、内边距与系统字体，需要显式清掉。 */
+button.tab, button.list-row {
+  border: 0; background: none; font: inherit; color: inherit; padding: 0;
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+}
+button.tab { flex: 1; }
+button.list-row { width: 100%; text-align: left; border-bottom: 1px solid var(--line); }
+
+/* 小屏适配：直接铺满 */
+@media (max-width: 460px) {
+  body { padding: 0; background: var(--bg); }
+  .phone { width: 100%; height: 100vh; height: 100dvh; border-radius: 0; box-shadow: none; }
+  .statusbar { display: none; }
+}
